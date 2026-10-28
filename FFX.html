@@ -2616,5 +2616,44 @@ setInterval(fetchFreshAccountConfig, 15000);
   });
 })();
 </script>
+
+<!-- FFX TOPUP PAYMENT + ORDER CONNECTOR -->
+<style>
+#ffxPayModal{position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.78);display:none;align-items:center;justify-content:center;padding:16px;font-family:Arial,sans-serif}
+#ffxPayModal .ffx-pay-card{width:min(100%,440px);max-height:90vh;overflow:auto;background:#fff;color:#111827;border-radius:18px;padding:20px;box-shadow:0 20px 70px #0008}
+#ffxPayModal h2{margin:0 0 12px}#ffxPayModal label{display:block;margin-top:12px;font-weight:700;font-size:14px}
+#ffxPayModal input,#ffxPayModal select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;margin-top:6px;font:inherit;background:#fff;color:#111827}
+#ffxPayModal button{width:100%;padding:12px;border:0;border-radius:9px;margin-top:12px;font-weight:700;cursor:pointer;background:#2563eb;color:#fff}
+#ffxPayModal #ffxPayClose{background:#64748b}#ffxPayModal .ffx-number{background:#eff6ff;padding:12px;border-radius:9px;margin-top:10px;overflow-wrap:anywhere}
+#ffxPayModal .ffx-muted{font-size:13px;color:#475569;line-height:1.5}#ffxPayMsg{margin-top:10px;overflow-wrap:anywhere;color:#b91c1c}
+</style>
+<div id="ffxPayModal" role="dialog" aria-modal="true" aria-labelledby="ffxPayTitle">
+ <div class="ffx-pay-card"><h2 id="ffxPayTitle">পেমেন্ট করে অর্ডার দিন</h2>
+ <p class="ffx-muted">নিচের নম্বরে পেমেন্ট করুন। এরপর সঠিক TrxID লিখে অর্ডার জমা দিন।</p>
+ <div class="ffx-number">bKash: <strong id="ffxBkash">লোড হচ্ছে...</strong> <button type="button" id="ffxCopyBkash">নম্বর কপি</button></div>
+ <div class="ffx-number">Nagad: <strong id="ffxNagad">লোড হচ্ছে...</strong> <button type="button" id="ffxCopyNagad">নম্বর কপি</button></div>
+ <form id="ffxPayForm"><label for="ffxPayMethod">পেমেন্ট পদ্ধতি</label><select id="ffxPayMethod" required><option value="bKash">bKash</option><option value="Nagad">Nagad</option></select>
+ <label for="ffxTrxid">Transaction ID (TrxID)</label><input id="ffxTrxid" required maxlength="100" autocomplete="off" placeholder="পেমেন্টের TrxID লিখুন">
+ <p id="ffxPaySummary" class="ffx-muted"></p><p class="ffx-muted">শুধু সত্যিকারের সম্পন্ন পেমেন্টের TrxID দিন। অর্ডার জমা দেওয়া মানেই পেমেন্ট যাচাই হয়েছে—এমন নয়।</p>
+ <button id="ffxSubmitOrder" type="submit">অর্ডার জমা দিন</button><button id="ffxPayClose" type="button">বন্ধ করুন</button><div id="ffxPayMsg" role="status"></div></form></div></div>
+<script>
+(function(){
+ 'use strict';
+ var API='https://ffx-topup-bd-admin-pl.onrender.com';
+ var modal=document.getElementById('ffxPayModal'), msg=document.getElementById('ffxPayMsg'), current=null, settings={bkash_number:'',nagad_number:''};
+ function getSettings(){return fetch(API+'/api/payment-settings',{cache:'no-store'}).then(function(r){if(!r.ok)throw Error('settings');return r.json()}).then(function(d){settings={bkash_number:d.bkash_number||d.settings?.bkash_number||'',nagad_number:d.nagad_number||d.settings?.nagad_number||''};document.getElementById('ffxBkash').textContent=settings.bkash_number||'অ্যাডমিন নম্বর যোগ করেননি';document.getElementById('ffxNagad').textContent=settings.nagad_number||'অ্যাডমিন নম্বর যোগ করেননি'}).catch(function(){document.getElementById('ffxBkash').textContent='নম্বর লোড হয়নি';document.getElementById('ffxNagad').textContent='নম্বর লোড হয়নি'})}
+ function activeView(){return ['ffView','uidView','wmView','wlView','luView','inView'].map(function(id){return document.getElementById(id)}).find(function(el){return el&&!el.hidden})}
+ function openFor(button){var view=activeView();if(!view){return}var pack=view.querySelector('.pk.on');if(!pack){alert('আগে একটি প্যাকেজ সিলেক্ট করুন');return}var uidInput=view.querySelector('#uid, #uidInp, #wmInp, #wlInp, #luInp, #inInp');var uid=uidInput?uidInput.value.trim():'';if(uid.length<6){alert('সঠিক Player UID লিখুন');if(uidInput)uidInput.focus();return}
+ current={uid:uid,amount:Number(pack.dataset.price),product:pack.dataset.name||pack.textContent.trim(),method:'bKash'};if(!Number.isFinite(current.amount)||current.amount<=0){alert('প্যাকেজের দাম ঠিক নেই');return}document.getElementById('ffxPaySummary').textContent='প্যাকেজ: '+current.product+' | মূল্য: ৳'+current.amount+' | UID: '+current.uid;document.getElementById('ffxPayForm').reset();msg.textContent='';modal.style.display='flex';getSettings()}
+ ['buyBtn','uidBuy','wmBuy','wlBuy','luBuy','inBuy'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopImmediatePropagation();openFor(b)},true)});
+ document.getElementById('ffxPayClose').onclick=function(){modal.style.display='none'};modal.addEventListener('click',function(e){if(e.target===modal)modal.style.display='none'});
+ function copyText(text){if(!text)return; if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){msg.style.color='#047857';msg.textContent='নম্বর কপি হয়েছে'}).catch(function(){prompt('নম্বর কপি করুন',text)});else prompt('নম্বর কপি করুন',text)}
+ document.getElementById('ffxCopyBkash').onclick=function(){copyText(settings.bkash_number)};document.getElementById('ffxCopyNagad').onclick=function(){copyText(settings.nagad_number)};
+ document.getElementById('ffxPayMethod').onchange=function(){if(current)current.method=this.value};
+ document.getElementById('ffxPayForm').addEventListener('submit',async function(e){e.preventDefault();if(!current)return;var method=document.getElementById('ffxPayMethod').value, trxid=document.getElementById('ffxTrxid').value.trim(), btn=document.getElementById('ffxSubmitOrder');if(!trxid){msg.textContent='TrxID লিখুন';return}btn.disabled=true;btn.textContent='জমা হচ্ছে...';msg.style.color='#b91c1c';try{var r=await fetch(API+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player_uid:current.uid,amount:current.amount,method:method,trxid:trxid})});var d=await r.json().catch(function(){return {}});if(!r.ok)throw Error(d.error||'অর্ডার জমা দেওয়া যায়নি');msg.style.color='#047857';msg.textContent='অর্ডার জমা হয়েছে! Order ID: '+(d.id||d.order?.id||'সার্ভারে সংরক্ষিত');document.getElementById('ffxTrxid').value='';}catch(err){msg.textContent='সমস্যা: '+err.message+'. সার্ভার/API চালু আছে কি না দেখুন।'}finally{btn.disabled=false;btn.textContent='অর্ডার জমা দিন'}});
+ getSettings();
+})();
+</script>
+
 </body>
 </html>
