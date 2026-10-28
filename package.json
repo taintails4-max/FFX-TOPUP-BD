@@ -1,12 +1,17 @@
+
 {
-  "name": "ff-topup",
+  "name": "ffx-topup-bd-admin-pl",
   "version": "1.0.0",
-  "description": "Free Fire Topup Website",
+  "private": true,
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "engines": {
-    "node": ">=16.0.0"
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.13.1"
   }
 }
+
